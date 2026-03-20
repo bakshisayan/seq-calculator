@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Calculator, Dna, Activity, DollarSign, AlertCircle, CheckCircle2, XCircle, Info, BookOpen } from 'lucide-react';
+import { Calculator, Dna, Activity, DollarSign, Info, BookOpen, Layers, Target } from 'lucide-react';
 
 const pricingData = [
   { platform: 'NextSeq2000', flowCell: 'P1', reads: 100e6, cycles: 100, price: 1241.16 },
@@ -26,7 +26,7 @@ const availableCycles = [75, 100, 150, 200, 300, 600];
 const SliderInput = ({ label, value, setter, min, max, step, suffix = "" }) => (
   <div className="flex flex-col space-y-2 mb-4">
     <div className="flex justify-between items-center">
-      <label className="text-sm font-semibold text-gray-700">{label}</label>
+      <label className="text-sm font-semibold text-slate-700">{label}</label>
       <div className="flex items-center space-x-2">
         <input
           type="number"
@@ -35,9 +35,9 @@ const SliderInput = ({ label, value, setter, min, max, step, suffix = "" }) => (
             const val = e.target.value;
             setter(val === '' ? '' : Number(val));
           }}
-          className="w-24 px-2 py-1 text-right border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+          className="w-24 px-2 py-1 text-right border border-slate-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
         />
-        <span className="text-sm text-gray-500 w-8">{suffix}</span>
+        <span className="text-sm text-slate-500 w-8">{suffix}</span>
       </div>
     </div>
     <input
@@ -47,27 +47,27 @@ const SliderInput = ({ label, value, setter, min, max, step, suffix = "" }) => (
       step={step}
       value={value === '' ? min : value}
       onChange={(e) => setter(Number(e.target.value))}
-      className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+      className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
     />
   </div>
 );
 
 export default function App() {
-  // States (Adjusted defaults for sparse CpG design)
+  // States
   const [probeCount, setProbeCount] = useState(10000);
   const [probeLength, setProbeLength] = useState(120);
   const [desiredDepth, setDesiredDepth] = useState(200);
   const [numSamples, setNumSamples] = useState(96);
   const [offTargetRate, setOffTargetRate] = useState(30); 
-  const [duplicateRate, setDuplicateRate] = useState(35); // Higher default for sparse probes
+  const [duplicateRate, setDuplicateRate] = useState(35);
   const [selectedCycles, setSelectedCycles] = useState(300);
 
   // Formatters
   const formatNumber = (num) => new Intl.NumberFormat('en-US').format(Math.round(num));
   const formatMoney = (num) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(num);
 
-  // --- RIGOROUS PIPELINE MATH ---
-  const pipelineMetrics = useMemo(() => {
+  // --- MODEL 1: BASE-TO-CLUSTER RESOLUTION ---
+  const lengthMetrics = useMemo(() => {
     const targetSizeBp = probeCount * probeLength;
     const effectiveBaseReq = targetSizeBp * desiredDepth;
     const onTargetFraction = 1 - (offTargetRate / 100);
@@ -76,8 +76,8 @@ export default function App() {
     return { targetSizeBp, totalReadsNeeded };
   }, [probeCount, probeLength, desiredDepth, numSamples, offTargetRate, duplicateRate, selectedCycles]);
 
-  // --- NAPKIN MATH ---
-  const napkinMetrics = useMemo(() => {
+  // --- MODEL 2: MULTIPLIER ESTIMATION ---
+  const multiplierMetrics = useMemo(() => {
     const offTargetFraction = offTargetRate / 100;
     const dupFraction = duplicateRate / 100;
     // Probe Count * Off-target multiplier * Dup multiplier * Depth * Samples
@@ -98,41 +98,39 @@ export default function App() {
       .sort((a, b) => a.totalCost - b.totalCost);
   };
 
-  const pipelineOptions = getOptimizedOptions(pipelineMetrics.totalReadsNeeded);
-  const napkinOptions = getOptimizedOptions(napkinMetrics.totalReadsNeeded);
+  const lengthOptions = getOptimizedOptions(lengthMetrics.totalReadsNeeded);
+  const multiplierOptions = getOptimizedOptions(multiplierMetrics.totalReadsNeeded);
 
   const CostTable = ({ options, highlightColor }) => {
-    if (options.length === 0) return <p className="text-sm text-gray-500 italic p-4">No compatible flow cells found for selected cycles.</p>;
+    if (options.length === 0) return <p className="text-sm text-slate-500 italic p-4">No compatible flow cells found for selected cycles.</p>;
     
     return (
-      <div className="overflow-x-auto rounded-lg border border-gray-200 mt-4">
+      <div className="overflow-x-auto rounded-lg border border-slate-200 mt-4">
         <table className="w-full text-left border-collapse bg-white">
           <thead>
-            <tr className="bg-gray-50 text-gray-600 text-xs uppercase tracking-wider">
+            <tr className="bg-slate-50 text-slate-600 text-xs uppercase tracking-wider">
               <th className="p-3 font-semibold">Flow Cell</th>
               <th className="p-3 font-semibold text-center">Qty</th>
               <th className="p-3 font-semibold text-right">Waste</th>
               <th className="p-3 font-semibold text-right">Total Cost</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-200">
-            {options.slice(0, 3).map((opt, idx) => ( // Only show top 3 options
+          <tbody className="divide-y divide-slate-200">
+            {options.slice(0, 3).map((opt, idx) => ( 
               <tr key={`${opt.platform}-${opt.flowCell}`} className={idx === 0 ? `${highlightColor} bg-opacity-20` : ""}>
                 <td className="p-3 text-sm">
-                  <div className="font-semibold text-gray-800">{opt.flowCell}</div>
-                  <div className="text-xs text-gray-500">{opt.platform}</div>
+                  <div className="font-semibold text-slate-800">{opt.flowCell}</div>
+                  <div className="text-xs text-slate-500">{opt.platform}</div>
                 </td>
                 <td className="p-3 text-center">
-                  <span className={`inline-flex px-2 py-1 text-xs font-bold rounded-full ${idx === 0 ? 'bg-white shadow-sm' : 'bg-gray-100 text-gray-800'}`}>
+                  <span className={`inline-flex px-2 py-1 text-xs font-bold rounded-full ${idx === 0 ? 'bg-white shadow-sm' : 'bg-slate-100 text-slate-800'}`}>
                     {opt.flowCellsNeeded}
                   </span>
                 </td>
-                <td className="p-3 text-right text-sm">
-                  <span className={opt.wastePercentage > 50 ? "text-red-500 font-medium" : "text-gray-500"}>
-                    {opt.wastePercentage.toFixed(0)}%
-                  </span>
+                <td className="p-3 text-right text-sm text-slate-600">
+                  {opt.wastePercentage.toFixed(0)}%
                 </td>
-                <td className="p-3 text-right font-bold text-gray-900">
+                <td className="p-3 text-right font-bold text-slate-900">
                   {formatMoney(opt.totalCost)}
                 </td>
               </tr>
@@ -144,7 +142,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-100 p-4 md:p-8 font-sans text-slate-900">
+    <div className="min-h-screen bg-slate-50 p-4 md:p-8 font-sans text-slate-900">
       <div className="max-w-7xl mx-auto space-y-6">
         
         {/* Header */}
@@ -153,8 +151,8 @@ export default function App() {
             <Calculator className="w-8 h-8 text-white" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-slate-800">Targeted Methylation Cost Optimizer</h1>
-            <p className="text-sm text-slate-500">Compare heuristic "napkin math" against rigorous biostatistical pipeline requirements.</p>
+            <h1 className="text-2xl font-bold text-slate-800">Targeted Methylation Sequencing Calculator</h1>
+            <p className="text-sm text-slate-500">Compare projection models to establish operational sequencing budgets.</p>
           </div>
         </div>
 
@@ -169,7 +167,7 @@ export default function App() {
             <SliderInput label="Num Samples" value={numSamples} setter={setNumSamples} min={1} max={200} step={1} />
             <SliderInput label="Desired Depth" value={desiredDepth} setter={setDesiredDepth} min={1} max={500} step={1} suffix="X" />
             
-            <h2 className="text-lg font-bold border-b pb-2 mt-8 mb-4 flex items-center"><Activity className="w-5 h-5 mr-2 text-rose-600"/> Efficiency Limits</h2>
+            <h2 className="text-lg font-bold border-b pb-2 mt-8 mb-4 flex items-center"><Activity className="w-5 h-5 mr-2 text-teal-600"/> Efficiency Metrics</h2>
             <SliderInput label="Off-Target Rate" value={offTargetRate} setter={setOffTargetRate} min={0} max={90} step={1} suffix="%" />
             <SliderInput label="Duplicate Rate" value={duplicateRate} setter={setDuplicateRate} min={0} max={80} step={1} suffix="%" />
 
@@ -193,39 +191,39 @@ export default function App() {
             {/* Split Comparison Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               
-              {/* Pipeline Math Card */}
-              <div className="bg-white rounded-2xl shadow-sm border-2 border-indigo-200 overflow-hidden flex flex-col">
+              {/* Length-Aware Math Card */}
+              <div className="bg-white rounded-2xl shadow-sm border border-indigo-200 overflow-hidden flex flex-col">
                 <div className="bg-indigo-50 p-4 border-b border-indigo-100 flex items-center justify-between">
                   <h3 className="font-bold text-indigo-900 flex items-center">
-                    <CheckCircle2 className="w-5 h-5 mr-2 text-indigo-600" />
-                    Rigorous Pipeline Math
+                    <Target className="w-5 h-5 mr-2 text-indigo-600" />
+                    Base-to-Cluster Resolution
                   </h3>
-                  <span className="text-xs font-semibold px-2 py-1 bg-indigo-200 text-indigo-800 rounded-full">Recommended</span>
+                  <span className="text-xs font-semibold px-2 py-1 bg-indigo-200 text-indigo-800 rounded-full">Length Inclusive</span>
                 </div>
                 <div className="p-6 flex-grow">
                   <div className="mb-4">
                     <p className="text-sm text-slate-500 font-medium">Total Reads Required</p>
-                    <p className="text-4xl font-extrabold text-indigo-600 mt-1">{formatNumber(pipelineMetrics.totalReadsNeeded / 1e6)}M</p>
+                    <p className="text-4xl font-extrabold text-indigo-600 mt-1">{formatNumber(lengthMetrics.totalReadsNeeded / 1e6)}M</p>
                   </div>
-                  <CostTable options={pipelineOptions} highlightColor="bg-indigo-100" />
+                  <CostTable options={lengthOptions} highlightColor="bg-indigo-100" />
                 </div>
               </div>
 
-              {/* Napkin Math Card */}
-              <div className="bg-white rounded-2xl shadow-sm border-2 border-orange-200 overflow-hidden flex flex-col">
-                <div className="bg-orange-50 p-4 border-b border-orange-100 flex items-center justify-between">
-                  <h3 className="font-bold text-orange-900 flex items-center">
-                    <XCircle className="w-5 h-5 mr-2 text-orange-600" />
-                    Heuristic "Napkin Math"
+              {/* Multiplier Math Card */}
+              <div className="bg-white rounded-2xl shadow-sm border border-teal-200 overflow-hidden flex flex-col">
+                <div className="bg-teal-50 p-4 border-b border-teal-100 flex items-center justify-between">
+                  <h3 className="font-bold text-teal-900 flex items-center">
+                    <Layers className="w-5 h-5 mr-2 text-teal-600" />
+                    Multiplier Estimation
                   </h3>
-                  <span className="text-xs font-semibold px-2 py-1 bg-orange-200 text-orange-800 rounded-full">Conservative</span>
+                  <span className="text-xs font-semibold px-2 py-1 bg-teal-200 text-teal-800 rounded-full">Standard Heuristic</span>
                 </div>
                 <div className="p-6 flex-grow">
                   <div className="mb-4">
                     <p className="text-sm text-slate-500 font-medium">Total Reads Required</p>
-                    <p className="text-4xl font-extrabold text-orange-600 mt-1">{formatNumber(napkinMetrics.totalReadsNeeded / 1e6)}M</p>
+                    <p className="text-4xl font-extrabold text-teal-600 mt-1">{formatNumber(multiplierMetrics.totalReadsNeeded / 1e6)}M</p>
                   </div>
-                  <CostTable options={napkinOptions} highlightColor="bg-orange-100" />
+                  <CostTable options={multiplierOptions} highlightColor="bg-teal-100" />
                 </div>
               </div>
 
@@ -235,38 +233,40 @@ export default function App() {
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
               <h2 className="text-xl font-bold text-slate-800 mb-4 flex items-center">
                 <BookOpen className="w-6 h-6 mr-2 text-slate-600" />
-                Biostatistical Theory & Calculation Math
+                Biostatistical Models
               </h2>
               
               <div className="space-y-6 text-sm text-slate-700">
                 
-                {/* Pipeline Logic */}
+                {/* Length Logic */}
                 <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
-                  <h4 className="font-bold text-indigo-700 text-base mb-2">Rigorous Pipeline Math (Used by nf-core/methylseq)</h4>
+                  <h4 className="font-bold text-indigo-700 text-base mb-2">Base-to-Cluster Resolution (Considers Probe & Read Length)</h4>
                   <p className="mb-2"><strong>Formula:</strong> <code>Reads = (({formatNumber(probeCount)} × {probeLength}bp × {desiredDepth}X) / ((1 - {offTargetRate / 100}) × (1 - {duplicateRate / 100})) × {numSamples}) / {selectedCycles}</code></p>
                   <ul className="list-disc pl-5 space-y-1 mt-2">
-                    <li><strong className="text-green-600">Pros:</strong> Biostatistically precise. Correctly converts coverage (a measure of <em>bases</em>) into sequencer throughput (clusters/reads) by factoring in cycle length. Prevents massive over-budgeting.</li>
-                    <li><strong className="text-red-600">Cons:</strong> Assumes roughly uniform coverage. Cannot predict severe locus drop-out due to GC bias or extreme secondary structures.</li>
+                    <li><strong>Mechanism:</strong> Calculates the physical target footprint in base pairs, factors in efficiency loss inversely, and divides by the sequencer's base-pair output per cluster.</li>
+                    <li><strong>Strengths:</strong> Highly specific to the physical dynamics of the sequencer. Often yields a highly optimized baseline for determining the minimum acceptable flow cell capacity.</li>
+                    <li><strong>Limitations:</strong> Assumes a relatively even distribution of reads across the targeted loci.</li>
                   </ul>
                 </div>
 
-                {/* Napkin Logic */}
+                {/* Multiplier Logic */}
                 <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
-                  <h4 className="font-bold text-orange-700 text-base mb-2">Heuristic "Napkin Math"</h4>
-                  <p className="mb-2"><strong>Formula:</strong> <code>Reads = {formatNumber(probeCount)} × (1 + {offTargetRate / 100}) × (1 + {duplicateRate / 100}) × {desiredDepth}X × {numSamples}</code></p>
+                  <h4 className="font-bold text-teal-700 text-base mb-2">Multiplier Estimation (Without Probe & Read Length)</h4>
+                  <p className="mb-2"><strong>Formula:</strong> <code>Reads = {formatNumber(probeCount)} × (1 + {offTargetRate / 100}) × (1 + {duplicateRate / 100}) × {desiredDepth} × {numSamples}</code></p>
                   <ul className="list-disc pl-5 space-y-1 mt-2">
-                    <li><strong className="text-green-600">Pros:</strong> Easy to calculate mentally. Provides an extremely safe, over-engineered buffer.</li>
-                    <li><strong className="text-red-600">Cons:</strong> Confuses "Depth" with "Reads per Probe". It entirely ignores the base-pair output of the sequencer. It also falls victim to the mathematical "multiplier fallacy" (multiplying by {1 + duplicateRate / 100}x does not properly offset a {duplicateRate}% loss rate).</li>
+                    <li><strong>Mechanism:</strong> Applies categorical efficiency multipliers directly to the probe count and requested depth independently of sequencer read mode.</li>
+                    <li><strong>Strengths:</strong> Widely used standard heuristic that provides a substantial, robust buffer against unmodeled experimental variables (like extreme GC bias or locus drop-out).</li>
+                    <li><strong>Limitations:</strong> Tends to forecast significantly higher read requirements due to the absence of the base-pair translation step.</li>
                   </ul>
                 </div>
 
                 {/* Sparse CpG Edge Case Warning */}
-                <div className="flex items-start p-4 bg-blue-50 text-blue-900 rounded-xl border border-blue-200">
-                  <Info className="w-6 h-6 mr-3 flex-shrink-0 mt-0.5 text-blue-600" />
+                <div className="flex items-start p-4 bg-slate-100 text-slate-800 rounded-xl border border-slate-300">
+                  <Info className="w-6 h-6 mr-3 flex-shrink-0 mt-0.5 text-slate-600" />
                   <div>
-                    <strong className="block mb-1">Critical Edge Case: Sparse, Single-CpG Targets</strong>
-                    Because your design targets isolated, single CpGs rather than contiguous tiled regions, you must sequence the entire genomic fragment (e.g., ~250bp) just to read the small target site. <br/><br/>
-                    <strong>Action:</strong> You must leave the <em>Probe Length</em> at {probeLength}bp (reflecting the capture footprint, not the CpG size). Furthermore, sparse targets lack "tiling capture overlap", meaning unique library complexity is lower. Expect higher duplicate rates (currently {duplicateRate}%) and higher off-target rates (currently {offTargetRate}%).
+                    <strong className="block mb-1">Methodological Note: Sparse vs. Continuous Targets</strong>
+                    When targeting isolated, single CpGs rather than contiguous tiled regions, the physical library fragment (e.g., ~250bp) must be sequenced in its entirety to access the small target site. <br/><br/>
+                    <strong>Application:</strong> In the Base-to-Cluster model, maintaining the <em>Probe Length</em> at {probeLength}bp mathematically reflects this broader capture footprint. Additionally, sparse target designs often display elevated duplicate rates (currently set to {duplicateRate}%) and off-target rates (currently set to {offTargetRate}%) due to reduced library complexity compared to densely tiled panels.
                   </div>
                 </div>
 
